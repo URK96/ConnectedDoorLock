@@ -11,7 +11,7 @@ namespace CDLFileUpload
     class FileUpload
     {
         static List<string> filePaths;
-        static readonly string server = "ftp://chlwlsgur96.ipdisk.co.kr/HDD1/Data/Project/CDL/"
+        static readonly string server = "ftp://chlwlsgur96.ipdisk.co.kr/HDD1/Data/Project/CDL/";
         static readonly string serverId = "ftpUser";
         static readonly string serverPw = "1598462";
 

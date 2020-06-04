@@ -2,8 +2,23 @@
 #include <WiringPi.h>
 #include <WiringPiSerial.h>
 
+#include "SerialCode.h"
+
 int fd;
 char data;
+
+void RunCommand()
+{
+    switch (data)
+    {
+        case CAMERA_SCREENSHOT:
+            break;
+        case CAMERA_RECORD_START:
+            break;
+        case CAMERA_RECORD_STOP:
+            break;
+    }
+}
 
 int main()
 {
@@ -26,6 +41,8 @@ int main()
         if (serialDataAvail(fd))
         {
             data = serialGetchar(fd);
+
+            RunCommand();
         }
     }
 }

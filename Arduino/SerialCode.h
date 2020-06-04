@@ -9,6 +9,14 @@
 
 // System Code
 
+#define DOOR_DS_ON 0x30
+#define DOOR_DS_OFF 0x31
+#define CAMERA_DS_ON 0x32
+#define CAMERA_DS_OFF 0x33
+#define CAMERA_SCREENSHOT 0x34
+#define CAMERA_RECORD_START 0x35
+#define CAMERA_RECORD_STOP 0x36
+
 
 // Door Status Code
 
