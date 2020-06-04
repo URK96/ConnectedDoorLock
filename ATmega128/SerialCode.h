@@ -31,5 +31,9 @@
 
 #define FP_PASS 0x20
 #define FP_FAIL 0x21
+#define RFID_PASS 0x22
+#define RFID_FAIL 0x23
+#define BT_PASS 0x24
+#define BT_FAIL 0x25
 
 #endif
