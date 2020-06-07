@@ -2,21 +2,20 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <io.h>
+#include <string.h>
 #include <WiringPi.h>
 #include <WiringPiSerial.h>
 
 #include "SerialCode.h"
-#include "AESCrypt.h"
+#include "XORCrypt.h"
 
 int fd;
 char data;
 
-
 void SavePW()
 {
     char tdata, count = 0, i;
-    uint8_t inputPW[PW_MAX], *encryptPW;
+    char inputPW[PW_MAX];
     FILE *fp;
 
     while ((tdata = serialGetchar(fd)) != SERIAL_SENDEND)
@@ -24,29 +23,28 @@ void SavePW()
         inputPW[count++] = tdata;
     }
 
-    encryptPW = AESEncrypt(inputPW, count);
+    XOREncrypt(inputPW, count);
 
-    if (access("home/cdl_pw", 0) == 0)
+    if (access("cdl_pw", 0) == 0)
     {
-        remove("home/cdl_pw");
+        remove("cdl_pw");
     }
 
-    fp = fopen("home/cdl_pw", "wt");
+    fp = fopen("cdl_pw", "w+");
 
     for (i = 0; i < count; ++i)
     {
-        fprintf(fprintf, "%d", encryptPW[i]);
+        fprintf(fprintf, "%d\n", inputPW[i]);
     }
 
     fclose(fp);
-    free(encryptPW);
 }
 
 bool CheckPW()
 {
     char tdata, count = 0, i = 0;
     int fdata;
-    uint8_t inputPW[PW_MAX], *decryptPW;
+    char inputPW[PW_MAX], *decryptPW;
     bool result = true;
     FILE *fp;
 
@@ -57,16 +55,20 @@ bool CheckPW()
 
     decryptPW = malloc(sizeof(uint8_t) * count);
 
-    if (access("home/cdl_pw", 0) == 0)
+    if (access("cdl_pw", 0) == 0)
     {
-        fp = fopen("home/cdl_pw", "r");
+        fp = fopen("cdl_pw", "r");
 
         while (fscanf(fp, "%d", &fdata) != EOF)
         {
             decryptPW[i++] = fdata;
         }
 
-        AESDecrypt(decryptPW, count);
+        XORDecrypt(decryptPW, count);
+    }
+    else
+    {
+        return false;
     }
 
     for (i = 0; i < count; ++i)
@@ -77,11 +79,7 @@ bool CheckPW()
         }
     }
 
-    if (fp != NULL)
-    {
-        fclose(fp);
-    }
-
+    fclose(fp);
     free(decryptPW);
 
     return result;
@@ -92,7 +90,7 @@ void RunCommand()
     switch (data)
     {
         case REQ_PW:
-            if (access("home/cdl_pw", 0) == 0)
+            if (access("cdl_pw", 0) == 0)
             {
                 serialPutchar(fd, EXIST_PW);
             }
