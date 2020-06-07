@@ -1,16 +1,112 @@
+#define PW_MAX 10
+
 #include <stdio.h>
+#include <stdlib.h>
+#include <io.h>
 #include <WiringPi.h>
 #include <WiringPiSerial.h>
 
 #include "SerialCode.h"
+#include "AESCrypt.h"
 
 int fd;
 char data;
+
+
+void SavePW()
+{
+    char tdata, count = 0, i;
+    uint8_t inputPW[PW_MAX], *encryptPW;
+    FILE *fp;
+
+    while ((tdata = serialGetchar(fd)) != SERIAL_SENDEND)
+    {
+        inputPW[count++] = tdata;
+    }
+
+    encryptPW = AESEncrypt(inputPW, count);
+
+    if (access("home/cdl_pw", 0) == 0)
+    {
+        remove("home/cdl_pw");
+    }
+
+    fp = fopen("home/cdl_pw", "wt");
+
+    for (i = 0; i < count; ++i)
+    {
+        fprintf(fprintf, "%d", encryptPW[i]);
+    }
+
+    fclose(fp);
+    free(encryptPW);
+}
+
+bool CheckPW()
+{
+    char tdata, count = 0, i = 0;
+    int fdata;
+    uint8_t inputPW[PW_MAX], *decryptPW;
+    bool result = true;
+    FILE *fp;
+
+    while ((tdata = serialGetchar(fd)) != SERIAL_SENDEND)
+    {
+        inputPW[count++] = tdata;
+    }
+
+    decryptPW = malloc(sizeof(uint8_t) * count);
+
+    if (access("home/cdl_pw", 0) == 0)
+    {
+        fp = fopen("home/cdl_pw", "r");
+
+        while (fscanf(fp, "%d", &fdata) != EOF)
+        {
+            decryptPW[i++] = fdata;
+        }
+
+        AESDecrypt(decryptPW, count);
+    }
+
+    for (i = 0; i < count; ++i)
+    {
+        if (inputPW[i] != decryptPW[i])
+        {
+            result = false;
+        }
+    }
+
+    if (fp != NULL)
+    {
+        fclose(fp);
+    }
+
+    free(decryptPW);
+
+    return result;
+}
 
 void RunCommand()
 {
     switch (data)
     {
+        case REQ_PW:
+            if (access("home/cdl_pw", 0) == 0)
+            {
+                serialPutchar(fd, EXIST_PW);
+            }
+            else
+            {
+                serialPutchar(fd, NO_PW);
+            }
+            break;
+        case SAVE_PW:
+            SavePW();
+            break;
+        case CHECK_PW:
+            CheckPW();
+            break;
         case CAMERA_SCREENSHOT:
             break;
         case CAMERA_RECORD_START:
