@@ -12,7 +12,8 @@ void setup()
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, LOW);
   
-    Serial.begin(9600); // With ATmega128 Serial Way
+    Serial.begin(9600); // With RPi Serial Way
+    atmegaSerial.begin(9600);
 
     InitDisplay();
     InitFP();
@@ -23,9 +24,11 @@ void setup()
 
 void loop()
 {
-    if (Serial.available())
+    atmegaSerial.listen();
+
+    if (atmegaSerial.available())
     {
-        int code = Serial.read();
+        int code = atmegaSerial.read();
 
         if (code == DOOR_OPEN)
         {
@@ -91,7 +94,10 @@ void loop()
                 }
             }
         }
-        else if (fingerSensor.getImage() != FINGERPRINT_NOFINGER)
+        
+        fingerSerial.listen();
+        
+        if (fingerSensor.getImage() != FINGERPRINT_NOFINGER)
         {
             CheckFP();
         }

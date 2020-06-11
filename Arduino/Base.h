@@ -30,6 +30,7 @@ extern char keys[KEYPAD_ROWS][KEYPAD_COLS];
 extern Keypad dKeypad;
 extern Adafruit_SSD1306 display;
 extern SoftwareSerial fingerSerial;
+extern SoftwareSerial atmegaSerial;
 extern Adafruit_Fingerprint fingerSensor;
 
 

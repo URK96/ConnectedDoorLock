@@ -10,7 +10,7 @@ namespace CDLFileUpload
 {
     class FileUpload
     {
-        static List<string> filePaths;
+        static string fileName = "";
         static readonly string server = "ftp://chlwlsgur96.ipdisk.co.kr/HDD1/Data/Project/CDL/";
         static readonly string serverId = "ftpUser";
         static readonly string serverPw = "1598462";
@@ -22,14 +22,7 @@ namespace CDLFileUpload
 
             try
             {
-                filePaths = new List<string>();
-
-                for (int i = 1; i < args.Length; ++i)
-                {
-                    filePaths.Add(args[i]);
-                }
-
-                WriteLine($"Total file count : {filePaths.Count}");
+                fileName = args[0];
             }
             catch (Exception ex)
             {
@@ -39,37 +32,30 @@ namespace CDLFileUpload
                 return;
             }
 
-            using (var wc = new WebClient())
+            Write($"Uploading File ({fileName})...");
+
+            if (UploadFile(fileName))
             {
-                int count = 1;
-                int total = filePaths.Count;
-
-                wc.Credentials = new NetworkCredential(serverId, serverPw);
-
-                foreach (var fName in filePaths)
-                {
-                    Write($"Uploading File ({count} / {total})...");
-
-                    if (UploadFile(wc, fName))
-                    {
-                        WriteLine("Ok");
-                    }
-                    else
-                    {
-                        WriteLine("Fail");
-                    }
-                }
+                WriteLine("Ok");
+            }
+            else
+            {
+                WriteLine("Fail");
             }
         }
 
-        static bool UploadFile(WebClient wc, string localPath)
+        static bool UploadFile(string localPath)
         {
             string fileName = Path.GetFileName(localPath);
             string serverPath = $"{server}{fileName}";
 
             try
             {
-                wc.UploadFile(serverPath, localPath);
+                using (var wc = new WebClient())
+                {
+                    wc.Credentials = new NetworkCredential(serverId, serverPw);
+                    wc.UploadFile(serverPath, localPath);
+                }
             }
             catch (Exception ex)
             {

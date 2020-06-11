@@ -1,5 +1,5 @@
-#ifndef AESCRYPT_H
-#define AESCRYPT_H
+#ifndef XORCRYPT_H
+#define XORCRYPT_H
 
 #include <stdlib.h>
 #include <stdio.h>

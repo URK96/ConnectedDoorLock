@@ -5,8 +5,8 @@
 byte isWaitInput = 0;
 boolean isOpen = false;
 
-byte rowPins[KEYPAD_ROWS] = { 7, 6, 5, 4 };
-byte colPins[KEYPAD_COLS] = { 11, 10, 9, 8 };
+byte rowPins[KEYPAD_ROWS] = { 17, 16, 15, 14 };
+byte colPins[KEYPAD_COLS] = { 18, 19, 5, 4 };
 
 char pwCount = 0;
 
@@ -23,6 +23,7 @@ char keys[KEYPAD_ROWS][KEYPAD_COLS] =
 Keypad dKeypad = Keypad(makeKeymap(keys), rowPins, colPins, KEYPAD_ROWS, KEYPAD_COLS);
 Adafruit_SSD1306 display = Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 SoftwareSerial fingerSerial = SoftwareSerial(2, 3);
+SoftwareSerial atmegaSerial = SoftwareSerial(6, 7);
 Adafruit_Fingerprint fingerSensor = Adafruit_Fingerprint(&fingerSerial);
 
 // System Function

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <WiringPi.h>
 #include <WiringPiSerial.h>
 
@@ -11,6 +12,42 @@
 
 int fd;
 char data;
+
+char* CreateScreenShotCmd()
+{
+    time_t t;
+    struct tm *pt;
+    
+    char cmd[100] = "raspistill -w 1920 -h 1080 -o ";
+    char subCmd[50] = " && ./FUpload ";
+    char ext[5] = ".jpg";
+    char fileName[50] = "";
+
+    sprintf(fileName, "%d%d%d_%d%d%d%s", tp->tm_year + 1900, tp->tm_mon + 1, tp->tm_mday, tp->tm_hour, tp->tm_min, tp->tm_sec, ext);
+    strcat(cmd, fileName);
+    strcat(subCmd, fileName);
+    strcat(cmd, subCmd);
+
+    return cmd;
+}
+
+char* CreateRecordCmd()
+{
+    time_t t;
+    struct tm *pt;
+    
+    char cmd[100] = "raspivid -w 1280 -h 720 -t 5000 -o ";
+    char subCmd[50] = " && ./FUpload ";
+    char ext[5] = ".jpg";
+    char fileName[50] = "";
+
+    sprintf(fileName, "%d%d%d_%d%d%d%s", tp->tm_year + 1900, tp->tm_mon + 1, tp->tm_mday, tp->tm_hour, tp->tm_min, tp->tm_sec, ext);
+    strcat(cmd, fileName);
+    strcat(subCmd, fileName);
+    strcat(cmd, subCmd);
+
+    return cmd;
+}
 
 void SavePW()
 {
@@ -87,6 +124,8 @@ bool CheckPW()
 
 void RunCommand()
 {
+    fprintf(stdout, "Command Code : %d\n", data);
+
     switch (data)
     {
         case REQ_PW:
@@ -100,14 +139,26 @@ void RunCommand()
             }
             break;
         case SAVE_PW:
+            fprintf(stdout, "Run save password\n");
             SavePW();
             break;
         case CHECK_PW:
+            fprintf(stdout, "Run check password\n");
             CheckPW();
             break;
         case CAMERA_SCREENSHOT:
+            fprintf(stdout, "Run screenshot and upload\n");
+
+            while (system(NULL) == 0);
+
+            system(CreateScreenShotCmd());
             break;
         case CAMERA_RECORD_START:
+            fprintf(stdout, "Run record video and upload\n");
+            
+            while (system(NULL) == 0);
+
+            system(CreateRecordCmd());
             break;
         case CAMERA_RECORD_STOP:
             break;
@@ -136,7 +187,10 @@ int main()
         {
             data = serialGetchar(fd);
 
-            RunCommand();
+            if (data >= 0)
+            {
+                RunCommand();
+            }
         }
     }
 }
