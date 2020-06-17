@@ -4,11 +4,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <WiringPi.h>
-#include <WiringPiSerial.h>
+#include <wiringPi.h>
+#include <wiringSerial.h>
 
 #include "SerialCode.h"
 #include "XORCrypt.h"
+
+typedef enum
+{
+    false = 0,
+    true = 1
+}bool;
 
 int fd;
 char data;
@@ -16,7 +22,7 @@ char data;
 char* CreateScreenShotCmd()
 {
     time_t t;
-    struct tm *pt;
+    struct tm *tp;
     
     char cmd[100] = "raspistill -w 1920 -h 1080 -o ";
     char subCmd[50] = " && ./FUpload ";
@@ -34,7 +40,7 @@ char* CreateScreenShotCmd()
 char* CreateRecordCmd()
 {
     time_t t;
-    struct tm *pt;
+    struct tm *tp;
     
     char cmd[100] = "raspivid -w 1280 -h 720 -t 5000 -o ";
     char subCmd[50] = " && ./FUpload ";
@@ -90,7 +96,7 @@ bool CheckPW()
         inputPW[count++] = tdata;
     }
 
-    decryptPW = malloc(sizeof(uint8_t) * count);
+    decryptPW = malloc(sizeof(char) * count);
 
     if (access("cdl_pw", 0) == 0)
     {

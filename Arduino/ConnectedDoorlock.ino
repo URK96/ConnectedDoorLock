@@ -26,24 +26,38 @@ void loop()
 {
     atmegaSerial.listen();
 
+    delay(50);
+
     if (atmegaSerial.available())
     {
         int code = atmegaSerial.read();
 
-        if (code == DOOR_OPEN)
-        {
-            isOpen = true;
+        display.println(code);
+        display.display();
 
-            DisplayString("Door O");
-            delay(2000);
-        }
-        else if (code == DOOR_CLOSE)
+        switch (code)
         {
-            isOpen = false;
+            case DOOR_OPEN:
+                isOpen = true;
 
-            DisplayString("Door C");
-            delay(2000);
+                DisplayString("Door O");
+                //delay(2000);
+                break;
+            case DOOR_CLOSE:
+                isOpen = false;
+
+                DisplayString("Door C");
+                //delay(2000);
+                break;
+            case CAMERA_SCREENSHOT:
+                Serial.write(CAMERA_SCREENSHOT);
+                break;
+            case CAMERA_RECORD_START:
+                Serial.write(CAMERA_RECORD_START);
+                break;
         }
+
+        delay(1000);
     }
     else if (!isOpen)
     {
@@ -55,11 +69,15 @@ void loop()
         {
             if ((pwCount < 10) && (key >= '0') && (key <= '9'))
             {
-                password[pwCount++] = key;
+                tPassword[pwCount++] = key;
             }
             else if (key == '*')
             {
-                CheckPW();
+                if (CheckPW())
+                {
+                    atmegaSerial.listen();
+                    atmegaSerial.write(PW_CORRECT);
+                }
             }
             else if (key == '#')
             {
@@ -75,6 +93,8 @@ void loop()
             {
                 DisplayString("Add FP");
                 delay(2000);
+
+                fingerSerial.listen();
                 SetFP();
             }
             else if (key == 'C')
@@ -94,12 +114,17 @@ void loop()
                 }
             }
         }
-        
+
         fingerSerial.listen();
         
         if (fingerSensor.getImage() != FINGERPRINT_NOFINGER)
         {
-            CheckFP();
+            if (CheckFP())
+            {
+                atmegaSerial.listen();
+
+                atmegaSerial.write(FP_PASS);
+            }
         }
     }
 }

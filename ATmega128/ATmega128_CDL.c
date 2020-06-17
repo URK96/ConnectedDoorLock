@@ -35,6 +35,8 @@ OS_FLAG_GRP *osFlag;
 INT8U pw[10] = { 0 };
 INT8U pwCount = 0;
 
+int sendCode = -1;
+
 /*
 **************************************************************************************************************
 *                                           FUNCTION PROTOTYPES
@@ -43,6 +45,7 @@ INT8U pwCount = 0;
 
 void DataTask(void *data);
 
+void CommandTask(void *data);
 void DoorTask(void *data);
 void DDSTask(void *data);
 void CDSTask(void *data);
@@ -72,7 +75,7 @@ int main()
 
     osFlag = OSFlagCreate(0, &err);
 
-    OSTaskCreate(DataTask,(void *)0, (void *)&TaskStartStk[TASK_STK_SIZE - 1], 0);
+    OSTaskCreate(DataTask, (void *)0, (void *)&TaskStartStk[TASK_STK_SIZE - 1], 0);
 
     OSStart();                                          /* Start multitasking                               */
 
@@ -88,6 +91,7 @@ int main()
 void DataTask(void *data)
 {
     INT8U err;
+
     int code;
 
     data = data;                                        /* Prevent compiler warning                           */
@@ -100,21 +104,49 @@ void DataTask(void *data)
     USARTInit(MYUBRR);
     OSStatInit();                                       /* Initialize uC/OS-II's statistics                 */
 
-    OSTaskCreate(DoorTask, 0, (void*)&TaskStk[0][TASK_STK_SIZE - 1], 2);
-    OSTaskCreate(DDSTask, 0, (void*)&TaskStk[1][TASK_STK_SIZE - 1], 5);
+    OSTaskCreate(CommandTask, 0, (void*)&TaskStk[0][TASK_STK_SIZE - 1], 2);
+    OSTaskCreate(DoorTask, 0, (void*)&TaskStk[1][TASK_STK_SIZE - 1], 3);
+    OSTaskCreate(DDSTask, 0, (void*)&TaskStk[3][TASK_STK_SIZE - 1], 5);
     OSTaskCreate(CDSTask, 0, (void*)&TaskStk[2][TASK_STK_SIZE - 1], 4);
+
+    PORTA = 0x01;
+
+    OSTaskSuspend(2);
+    OSTaskSuspend(3);
+    OSTaskSuspend(4);
+    OSTaskSuspend(5);
+
+    while (1)
+    {
+        code = USART0Receive();
+        
+        if (code == SERIAL_WAIT)
+        {
+            break;
+        }
+
+        OSTimeDlyHMSM(0, 0, 0, 200);
+    }
+
+    USART0Transmit(SERIAL_WAIT);
+
+    SetServoAngle(120);
+
+    OSTaskResume(2);
+    OSTaskResume(3);
+    OSTaskResume(4);
+    //OSTaskResume(5);
 
     for(;;)
     {
-        code = USART0Receive();
-
-        switch (code)
+        if (sendCode > 0)
         {
-            case BT_PASS:
-            case FP_PASS:
-                OSFlagPost(osFlag, 0x01, OS_FLAG_SET, &err);
-                break;
+            USART0Transmit(sendCode);
+
+            sendCode = -1;
         }
+
+        OSTimeDlyHMSM(0, 0, 1, 0);
     }
 }
 
@@ -124,6 +156,33 @@ void DataTask(void *data)
 **************************************************************************************************************
 */
 
+void CommandTask(void *data)
+{
+    INT8U err;
+
+    int code;
+
+    while (1)
+    {
+        PORTA |= 0x02;
+
+        code = USART0Receive();
+
+        switch (code)
+        {
+            case PW_CORRECT:
+            case BT_PASS:
+            case FP_PASS:
+                OSFlagPost(osFlag, 0x01, OS_FLAG_SET, &err);
+                break;
+        }
+
+        
+
+        OSTimeDlyHMSM(0, 0, 0, 500);
+    }
+}
+
 void DoorTask(void *data)
 {
     INT8U err;
@@ -132,18 +191,25 @@ void DoorTask(void *data)
     {
         OSFlagPend(osFlag, 0x01, OS_FLAG_WAIT_SET_ALL, 0, &err);
 
-        USART0Transmit(DOOR_OPEN);
-        SetServoAngle(120);
-        BuzzerOpen();
-        OSTimeDlyHMSM(0, 0, 0, 500);
+        OSTaskSuspend(2);       
 
-        OSFlagPend(osFlag, 0x02, OS_FLAG_WAIT_SET_ALL, 0, &err);
+        PORTA = 0x03;
+        USART0Transmit(DOOR_OPEN);
+        SetServoAngle(10);
+        //BuzzerOpen();
+        OSTimeDlyHMSM(0, 0, 0, 500);
+        OSTaskResume(5);
 
         while (1)
         {
+            PORTA = 0x03;
+
             OSFlagPend(osFlag, 0x02, OS_FLAG_WAIT_SET_ALL, 0, &err);
-            BuzzerCheckClose();
-            OSTimeDlyHMSM(0, 0, 2, 0);
+
+            PORTA = 0x04;
+
+            //BuzzerCheckClose();
+            OSTimeDlyHMSM(0, 0, 1, 0);
 
             if ((OSFlagQuery(osFlag, &err) & 0x02) == 0x02)
             {
@@ -153,12 +219,15 @@ void DoorTask(void *data)
 
         USART0Transmit(DOOR_CLOSE);
         OSFlagPost(osFlag, 0x01, OS_FLAG_CLR, &err);
-        SetServoAngle(10);
-        BuzzerClose();
-
-        OSFlagPost(osFlag, 0x02, OS_FLAG_CLR, &err);
+        SetServoAngle(120);
+        //BuzzerClose();
 
         OSTimeDlyHMSM(0, 0, 0, 500);
+
+        OSTaskResume(2);
+        OSTaskSuspend(5);
+
+        OSFlagPost(osFlag, 0x02, OS_FLAG_CLR, &err);
     }
 }
 
@@ -170,11 +239,11 @@ void DDSTask(void *data)
     {
         if ((PINF & 0x01) == 0x01)
         {
-            OSFlagPost(osFlag, 0x02, OS_FLAG_SET, &err);
+            OSFlagPost(osFlag, 0x02, OS_FLAG_CLR, &err);
         }
         else
         {
-            OSFlagPost(osFlag, 0x02, OS_FLAG_CLR, &err);
+            OSFlagPost(osFlag, 0x02, OS_FLAG_SET, &err);
         }
 
         OSTimeDlyHMSM(0, 0, 0, 200);
@@ -187,11 +256,13 @@ void CDSTask(void *data)
 
     while (1)
     {
-        if ((PINF & 0x02) == 0x02)
+        if ((PINF & 0x02) != 0x02)
         {
+            PORTA |= 0x80;
+
             for (count = 0; count <= 2; ++count)
             {
-                if ((PINF & 0x02) != 0x02)
+                if ((PINF & 0x02) == 0x02)
                 {
                     goto EXITLOOP;
                 }
@@ -199,8 +270,24 @@ void CDSTask(void *data)
                 OSTimeDlyHMSM(0, 0, 1, 0);
             }
 
-            USART0Transmit(CAMERA_RECORD_START);
+            PORTA |= 0x40;
+
+            //OSTaskSuspend(2);
+
+            //USART0Transmit(CAMERA_RECORD_START);
+            sendCode = CAMERA_RECORD_START;
+
+            //OSTimeDlyHMSM(0, 0, 0, 500);
+
+            OSTaskResume(2);
+
+            PORTA &= ~0x40;
         }
+        else
+        {
+            PORTA &= ~0x80;
+        }
+        
 
 EXITLOOP:
         OSTimeDlyHMSM(0, 0, 0, 300);
@@ -232,30 +319,6 @@ void BuzzerOpen()
 {
     int k;
 
-	/*for (k = 0; k < 120; ++k)
-	{
-		PORTD = 0x01;
-		_delay_ms(1.1);
-		PORTD = 0x00;
-		_delay_ms(1.1);
-	}
-
-	for (k = 0; k < 120; ++k)
-	{
-		PORTD = 0x01;
-		_delay_ms(0.9);
-		PORTD = 0x00;
-		_delay_ms(0.9);
-	}
-
-	for (k = 0; k < 120; ++k)
-	{
-		PORTD = 0x01;
-		_delay_ms(0.7);
-		PORTD = 0x00;
-		_delay_ms(0.7);
-	}*/
-
     BuzzerLoop(1.1);
     BuzzerLoop(0.9);
     BuzzerLoop(0.7);
@@ -267,22 +330,6 @@ void BuzzerCheckClose()
 {
     int k;
 
-	/*for (k = 0; k < 120; ++k)
-	{
-		PORTD = 0x01;
-		_delay_ms(1.1);
-		PORTD = 0x00;
-		_delay_ms(1.1);
-	}
-
-    for (k = 0; k < 120; ++k)
-	{
-		PORTD = 0x01;
-		_delay_ms(1.1);
-		PORTD = 0x00;
-		_delay_ms(1.1);
-	}*/
-
     BuzzerLoop(0.7);
     BuzzerLoop(0.7);
 
@@ -292,30 +339,6 @@ void BuzzerCheckClose()
 void BuzzerClose()
 {
 	int k;
-	
-	/*for (k = 0; k < 120; ++k)
-	{
-		PORTD = 0x01;
-		_delay_ms(0.7);
-		PORTD = 0x00;
-		_delay_ms(0.7);
-	}
-	
-	for (k = 0; k < 120; ++k)
-	{
-		PORTD = 0x01;
-		_delay_ms(0.9);
-		PORTD = 0x00;
-		_delay_ms(0.9);
-	}
-	
-	for (k = 0; k < 120; ++k)
-	{
-		PORTD = 0x01;
-		_delay_ms(1.1);
-		PORTD = 0x00;
-		_delay_ms(1.1);
-	}*/
 
     BuzzerLoop(0.7);
     BuzzerLoop(0.9);
@@ -348,6 +371,7 @@ void BuzzerLoop(float delay)
 
 void PortInit()
 {
+    DDRA = 0xFF;
     DDRC = 0X00;
     DDRB = 0xFF; // PB5 => Door Servo Motor 
     DDRD = 0xFF; // PD0 => Buzzer
@@ -384,16 +408,22 @@ void USART0Transmit(INT8 data)
 
     while(!(UCSR0A & (1 << UDRE0)));
 
+    PORTA |= 0x10;
+
     UDR0 = data;
 
     OS_EXIT_CRITICAL();
+
+    OSTimeDlyHMSM(0, 0, 0, 300);
+
+    PORTA &= ~0x10;
 }
 
 INT8 USART0Receive()
 {
-    while(!(UCSR0A & (1 << RXC0)));
+    if (!(UCSR0A & (1 << RXC0)))
     {
-        OSTimeDlyHMSM(0, 0, 0, 1);
+        return -1;
     }
 
     return UDR0;

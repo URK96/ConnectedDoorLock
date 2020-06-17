@@ -24,6 +24,7 @@ extern byte colPins[KEYPAD_COLS];
 extern char pwCount;
 
 extern char password[PW_MAX];
+extern char tPassword[PW_MAX];
 
 extern char keys[KEYPAD_ROWS][KEYPAD_COLS];
 
@@ -49,7 +50,7 @@ void DisplayString(String s);
 void InitFP();
 void SetFP();
 boolean CheckFingerSensorStatus();
-void CheckFP();
+boolean CheckFP();
 boolean VerifyFP();
 void WaitRemoveFinger();
 boolean EnrollFP(uint8_t id);

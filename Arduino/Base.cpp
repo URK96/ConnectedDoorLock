@@ -1,29 +1,29 @@
 #include "Base.h"
 #include "SerialCode.h"
 
-
 byte isWaitInput = 0;
 boolean isOpen = false;
 
-byte rowPins[KEYPAD_ROWS] = { 17, 16, 15, 14 };
-byte colPins[KEYPAD_COLS] = { 18, 19, 5, 4 };
+byte rowPins[KEYPAD_ROWS] = { 5, 6, 15, 14 };
+byte colPins[KEYPAD_COLS] = { 17, 16, 8, 7 };
 
 char pwCount = 0;
 
 char password[PW_MAX] = { 0 };
+char tPassword[PW_MAX] = { 0 };
 
 char keys[KEYPAD_ROWS][KEYPAD_COLS] = 
 {
-    { '1', '2', '3', 'A' },
-    { '4', '5', '6', 'B' },
-    { '7', '8', '9', 'C' },
-    { '*', '0', '#', 'D' }
+    { 'A', 'B', 'C', 'D' },
+    { '3', '6', '9', '#' },
+    { '2', '5', '8', '0' },
+    { '1', '4', '7', '*' }
 };
 
 Keypad dKeypad = Keypad(makeKeymap(keys), rowPins, colPins, KEYPAD_ROWS, KEYPAD_COLS);
 Adafruit_SSD1306 display = Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 SoftwareSerial fingerSerial = SoftwareSerial(2, 3);
-SoftwareSerial atmegaSerial = SoftwareSerial(6, 7);
+SoftwareSerial atmegaSerial = SoftwareSerial(10, 9);
 Adafruit_Fingerprint fingerSensor = Adafruit_Fingerprint(&fingerSerial);
 
 // System Function
@@ -48,29 +48,29 @@ void SystemInit()
 
     DisplayString("Wait other system...");
 
-    Serial.write(REQ_PW);
+    Serial.write(SERIAL_WAIT);
 
     while (!Serial.available());
 
-    code = Serial.read();
+    atmegaSerial.listen();
 
-    if (code == NO_PW)
-    {
-        SetPW();
-    }
-
-    /*display.clearDisplay();
-
-    display.setCursor(0, 0);
-    display.println("Set PW");
-    display.println("");
-    display.println("Press any key");
+    display.println();
+    display.println("ATmega128");
 
     display.display();
 
-    while ((key = dKeypad.getKey()) == NO_KEY);
+    atmegaSerial.write(SERIAL_WAIT);
 
-    SetPW();*/
+    while (!atmegaSerial.available());
+
+    display.println();
+    display.println(atmegaSerial.read());
+
+    display.display();
+
+    delay(1000);
+
+    SetPW();
 
     display.clearDisplay();
 
@@ -91,7 +91,7 @@ void SetPW()
     while (1)
     {
         key = dKeypad.getKey();
-
+        
         if (key != NO_KEY)
         {
             if ((pwCount < 10) && (key >= '0') && (key <= '9'))
@@ -119,19 +119,6 @@ void SetPW()
         }
     }
 
-    DisplayString("Save PW...");
-
-    Serial.write(SAVE_PW);
-
-    for (i = 0; i < pwCount; ++i)
-    {
-        while (!Serial.available());
-
-        Serial.write(password[pwCount]);
-    }
-
-    Serial.write(SERIAL_SENDEND);
-
     pwCount = 0;
 }
 
@@ -156,7 +143,7 @@ void ChangePW()
         {
             if ((pwCount < 10) && (key >= '0') && (key <= '9'))
             {
-                password[pwCount++] = key;
+                tPassword[pwCount++] = key;
 
                 ShowPWDisplay();
             }
@@ -186,7 +173,7 @@ void ResetTempPW()
 {
     for (char i = 0; i < 10; ++i)
     {
-        password[i] = 0;
+        tPassword[i] = 0;
     }
 
     pwCount = 0;
@@ -195,38 +182,33 @@ void ResetTempPW()
 boolean CheckPW()
 {
     byte isCorrect = 1;
-    int code;
-    char i;
 
-    Serial.write(CHECK_PW);
-
-    while (!Serial.available());
-
-    for (i = 0; i < pwCount; ++i)
+    for (char i = 0; i < 10; ++i)
     {
-        Serial.write(password[i]);
+        if (password[i] != tPassword[i])
+        {
+            isCorrect = 0;
+
+            break;
+        }
     }
 
-    Serial.write(SERIAL_SENDEND);
-
-    while (!Serial.available());
-
-    code = Serial.read();
-
-    if (code == PW_CORRECT)
+    if (isCorrect)
     {
-        DisplayString("PW O!");
+        DisplayString("PW O");
         delay(2000);
-
-        return true;
     }
-    else if (code == PW_INCORRECT)
+    else
     {
-        DisplayString("PW X!");
+        DisplayString("PW X");
         delay(2000);
-
-        return false;
     }
+
+    pwCount = 0;
+
+    ResetTempPW();
+
+    return (isCorrect == 1);
 }
 
 void ShowPWDisplay()
@@ -329,18 +311,21 @@ boolean CheckFingerSensorStatus()
     return fingerSensor.verifyPassword();
 }
 
-void CheckFP()
+boolean CheckFP()
 {
     if (VerifyFP())
     {
         DisplayString("FP O");
-        Serial.write(FP_PASS);
         delay(2000);
+
+        return true;
     }
     else
     {
         DisplayString("FP X");
         delay(2000);
+
+        return false;
     }
 }
 
