@@ -22,6 +22,7 @@
 
 #define DOOR_CLOSE 0x00
 #define DOOR_OPEN 0x01 // with PW_CORRECT
+#define DOOR_CHECKCLOSE 0x02
 
 
 // PW Serial Code

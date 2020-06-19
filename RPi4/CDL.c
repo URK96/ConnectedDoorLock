@@ -4,15 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-<<<<<<< HEAD
-=======
 #include <unistd.h>
->>>>>>> 48b1ff727cca49de146e8ebf5fd78c4b64ea552d
 #include <wiringPi.h>
 #include <wiringSerial.h>
 
 #include "SerialCode.h"
-#include "XORCrypt.h"
 #include "MFRC522.h"
 
 /*typedef enum
@@ -20,12 +16,6 @@
     false = 0,
     true = 1
 }bool;*/
-
-typedef enum
-{
-    false = 0,
-    true = 1
-}bool;
 
 int fd;
 char data;
@@ -84,7 +74,7 @@ void RunScreenShotCmd()
     time_t t;
     struct tm *tp;
     
-    char cmd[100] = "raspistill -w 1920 -h 1080 -o ";
+    char cmd[100] = "raspistill -w 1920 -h 1080 -rot 180 -o ";
     char subCmd[50] = " && ./FUpload ";
     char ext[5] = ".jpg";
     char fileName[50] = "";
@@ -110,7 +100,7 @@ void RunRecordCmd()
     time_t t;
     struct tm *tp;
     
-    char cmd[100] = "raspivid -w 1280 -h 720 -t 5000 -o ";
+    char cmd[100] = "raspivid -w 1280 -h 720 -rot 180 -t 5000 -o ";
     char subCmd[50] = " && ./FUpload ";
     char ext[6] = ".h264";
     char fileName[50] = "";
@@ -123,90 +113,12 @@ void RunRecordCmd()
     strcat(cmd, fileName);
     strcat(subCmd, fileName);
     strcat(cmd, subCmd);
-<<<<<<< HEAD
-
-    return cmd;
-}
-
-void SavePW()
-{
-    char tdata, count = 0, i;
-    char inputPW[PW_MAX];
-    FILE *fp;
-
-    while ((tdata = serialGetchar(fd)) != SERIAL_SENDEND)
-    {
-        inputPW[count++] = tdata;
-    }
-
-    XOREncrypt(inputPW, count);
-
-    if (access("cdl_pw", 0) == 0)
-    {
-        remove("cdl_pw");
-    }
-
-    fp = fopen("cdl_pw", "w+");
-
-    for (i = 0; i < count; ++i)
-    {
-        fprintf(fprintf, "%d\n", inputPW[i]);
-    }
-
-    fclose(fp);
-}
-
-bool CheckPW()
-{
-    char tdata, count = 0, i = 0;
-    int fdata;
-    char inputPW[PW_MAX], *decryptPW;
-    bool result = true;
-    FILE *fp;
-
-    while ((tdata = serialGetchar(fd)) != SERIAL_SENDEND)
-    {
-        inputPW[count++] = tdata;
-    }
-
-    decryptPW = malloc(sizeof(char) * count);
-
-    if (access("cdl_pw", 0) == 0)
-    {
-        fp = fopen("cdl_pw", "r");
-
-        while (fscanf(fp, "%d", &fdata) != EOF)
-        {
-            decryptPW[i++] = fdata;
-        }
-
-        XORDecrypt(decryptPW, count);
-    }
-    else
-    {
-        return false;
-    }
-
-    for (i = 0; i < count; ++i)
-    {
-        if (inputPW[i] != decryptPW[i])
-        {
-            result = false;
-        }
-    }
-
-    fclose(fp);
-    free(decryptPW);
-
-    return result;
-=======
     
     fprintf(stdout, "%s\n", cmd);
     
     while (system(NULL) == 0);
     
     system(cmd);
->>>>>>> 48b1ff727cca49de146e8ebf5fd78c4b64ea552d
 }
 
 void RunCommand()

@@ -43,18 +43,14 @@ int sendCode = -1;
 **************************************************************************************************************
 */
 
-void DataTask(void *data);
+void StartTask(void *data); // Init task
 
-void CommandTask(void *data);
-void DoorTask(void *data);
-void DDSTask(void *data);
-void CDSTask(void *data);
+void CommandTask(void *data); // Command receive task
+void DoorTask(void *data); // Door control task
+void DDSTask(void *data); // Door distance sensor monitoring task
+void CDSTask(void *data); // Camera distance sensor monitoring task
 
 void SetServoAngle(INT8 angle);
-void BuzzerOpen();
-void BuzzerCheckClose();
-void BuzzerClose();
-void BuzzerLoop(float dealy);
 
 void PortInit();
 void TimerInit();
@@ -75,7 +71,7 @@ int main()
 
     osFlag = OSFlagCreate(0, &err);
 
-    OSTaskCreate(DataTask, (void *)0, (void *)&TaskStartStk[TASK_STK_SIZE - 1], 0);
+    OSTaskCreate(StartTask, (void *)0, (void *)&TaskStartStk[TASK_STK_SIZE - 1], 0);
 
     OSStart();                                          /* Start multitasking                               */
 
@@ -88,7 +84,7 @@ int main()
 **************************************************************************************************************
 */
 
-void DataTask(void *data)
+void StartTask(void *data)
 {
     INT8U err;
 
@@ -135,18 +131,10 @@ void DataTask(void *data)
     OSTaskResume(2);
     OSTaskResume(3);
     OSTaskResume(4);
-    //OSTaskResume(5);
 
     for(;;)
     {
-        if (sendCode > 0)
-        {
-            USART0Transmit(sendCode);
-
-            sendCode = -1;
-        }
-
-        OSTimeDlyHMSM(0, 0, 1, 0);
+        OSTimeDlyHMSM(0, 0, 2, 0);
     }
 }
 
@@ -173,11 +161,10 @@ void CommandTask(void *data)
             case PW_CORRECT:
             case BT_PASS:
             case FP_PASS:
+            case RFID_PASS:
                 OSFlagPost(osFlag, 0x01, OS_FLAG_SET, &err);
                 break;
         }
-
-        
 
         OSTimeDlyHMSM(0, 0, 0, 500);
     }
@@ -194,9 +181,9 @@ void DoorTask(void *data)
         OSTaskSuspend(2);       
 
         PORTA = 0x03;
+
         USART0Transmit(DOOR_OPEN);
         SetServoAngle(10);
-        //BuzzerOpen();
         OSTimeDlyHMSM(0, 0, 0, 500);
         OSTaskResume(5);
 
@@ -205,10 +192,10 @@ void DoorTask(void *data)
             PORTA = 0x03;
 
             OSFlagPend(osFlag, 0x02, OS_FLAG_WAIT_SET_ALL, 0, &err);
+            USART0Transmit(DOOR_CHECKCLOSE);
 
             PORTA = 0x04;
 
-            //BuzzerCheckClose();
             OSTimeDlyHMSM(0, 0, 1, 0);
 
             if ((OSFlagQuery(osFlag, &err) & 0x02) == 0x02)
@@ -220,7 +207,6 @@ void DoorTask(void *data)
         USART0Transmit(DOOR_CLOSE);
         OSFlagPost(osFlag, 0x01, OS_FLAG_CLR, &err);
         SetServoAngle(120);
-        //BuzzerClose();
 
         OSTimeDlyHMSM(0, 0, 0, 500);
 
@@ -272,12 +258,12 @@ void CDSTask(void *data)
 
             PORTA |= 0x40;
 
-            //OSTaskSuspend(2);
+            OSTaskSuspend(2);
 
-            //USART0Transmit(CAMERA_RECORD_START);
-            sendCode = CAMERA_RECORD_START;
+            USART0Transmit(CAMERA_RECORD_START);
+            //sendCode = CAMERA_RECORD_START;
 
-            //OSTimeDlyHMSM(0, 0, 0, 500);
+            OSTimeDlyHMSM(0, 0, 0, 500);
 
             OSTaskResume(2);
 
@@ -308,14 +294,7 @@ void SetServoAngle(INT8 angle)
     OCR1AL = (i & 0xFF);
 }
 
-void SetDoorOpen()
-{
-    INT8U err;
-
-    OSFlagPost(osFlag, 0x01, OS_FLAG_SET, &err);
-}
-
-void BuzzerOpen()
+/*void BuzzerOpen()
 {
     int k;
 
@@ -361,7 +340,7 @@ void BuzzerLoop(float delay)
 		
         _delay_ms(delay);
 	}
-}
+}*/
 
 /*
 **************************************************************************************************************
@@ -374,7 +353,6 @@ void PortInit()
     DDRA = 0xFF;
     DDRC = 0X00;
     DDRB = 0xFF; // PB5 => Door Servo Motor 
-    DDRD = 0xFF; // PD0 => Buzzer
     DDRF = 0x00; // PF0 => Door DS, PF1 => Camera DS
     DDRG = 0x03; // PG0 => CDS Event, PG1 => Door Status 
 }
@@ -408,15 +386,9 @@ void USART0Transmit(INT8 data)
 
     while(!(UCSR0A & (1 << UDRE0)));
 
-    PORTA |= 0x10;
-
     UDR0 = data;
 
     OS_EXIT_CRITICAL();
-
-    OSTimeDlyHMSM(0, 0, 0, 300);
-
-    PORTA &= ~0x10;
 }
 
 INT8 USART0Receive()

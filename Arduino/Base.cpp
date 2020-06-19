@@ -24,6 +24,7 @@ Keypad dKeypad = Keypad(makeKeymap(keys), rowPins, colPins, KEYPAD_ROWS, KEYPAD_
 Adafruit_SSD1306 display = Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 SoftwareSerial fingerSerial = SoftwareSerial(2, 3);
 SoftwareSerial atmegaSerial = SoftwareSerial(10, 9);
+SoftwareSerial btSerial = SoftwareSerial(11, 12);
 Adafruit_Fingerprint fingerSensor = Adafruit_Fingerprint(&fingerSerial);
 
 // System Function
@@ -278,7 +279,6 @@ void DisplayString(String s)
 void InitFP()
 {
     fingerSensor.begin(57600);
-    //fingerSensor.emptyDatabase();
 }
 
 void SetFP()
@@ -557,4 +557,51 @@ CHECK2:
     WaitRemoveFinger();
 
     return true;
+}
+
+
+// Buzzer Function
+
+void BuzzerOpen()
+{
+    int note[] = { 2093, 2637, 3136 };
+
+    for (int i = 0; i < 3; ++i)
+    {
+        tone(BUZZER_PIN, note[i], 500);
+    }
+}
+
+void BuzzerCheckClose()
+{
+    int note = 2637;
+
+    tone(BUZZER_PIN, note, 500);
+    tone(BUZZER_PIN, note, 500);
+}
+
+void BuzzerClose()
+{
+    int note[] = { 3136, 2637, 2093 };
+
+    for (int i = 0; i < 3; ++i)
+    {
+        tone(BUZZER_PIN, note[i], 500);
+    }
+}
+
+void BuzzerLoop(float tDelay)
+{
+    int k;
+
+    for (k = 0; k < 120; ++k)
+	{
+		digitalWrite(BUZZER_PIN, HIGH);
+
+		delay(tDelay);
+		
+        digitalWrite(BUZZER_PIN, LOW);
+		
+        delay(tDelay);
+	}
 }

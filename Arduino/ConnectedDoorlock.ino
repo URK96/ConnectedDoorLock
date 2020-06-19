@@ -14,6 +14,7 @@ void setup()
   
     Serial.begin(9600); // With RPi Serial Way
     atmegaSerial.begin(9600);
+    btSerial.begin(9600);
 
     InitDisplay();
     InitFP();
@@ -41,13 +42,18 @@ void loop()
                 isOpen = true;
 
                 DisplayString("Door O");
-                //delay(2000);
+                Serial.write(DOOR_OPEN);
+                BuzzerOpen();
                 break;
             case DOOR_CLOSE:
                 isOpen = false;
 
                 DisplayString("Door C");
-                //delay(2000);
+                Serial.write(DOOR_CLOSE);
+                BuzzerClose();
+                break;
+            case DOOR_CHECKCLOSE:
+                BuzzerCheckClose();
                 break;
             case CAMERA_SCREENSHOT:
                 Serial.write(CAMERA_SCREENSHOT);
@@ -57,7 +63,23 @@ void loop()
                 break;
         }
 
-        delay(1000);
+        delay(500);
+    }
+    else if (Serial.available())
+    {
+        int code = Serial.read();
+
+        display.println(code);
+        display.display();
+
+        switch (code)
+        {
+            case RFID_PASS:
+                atmegaSerial.write(RFID_PASS);
+                break;
+        }
+
+        delay(500);
     }
     else if (!isOpen)
     {
@@ -77,6 +99,7 @@ void loop()
                 {
                     atmegaSerial.listen();
                     atmegaSerial.write(PW_CORRECT);
+                    isOpen = true;
                 }
             }
             else if (key == '#')
@@ -115,6 +138,35 @@ void loop()
             }
         }
 
+        btSerial.listen();
+
+        delay(50);
+
+        if (btSerial.available())
+        {
+            ResetTempPW();
+
+            while (btSerial.available())
+            {
+                char data = btSerial.read();
+
+                if ((data >= '0') && (data <= '9'))
+                {
+                    tPassword[pwCount++] = data;
+                }
+                else if (data == '*')
+                {
+                    break;
+                }
+            }
+
+            if (CheckPW())
+            {
+                atmegaSerial.write(BT_PASS);
+                isOpen = true;
+            }
+        }
+
         fingerSerial.listen();
         
         if (fingerSensor.getImage() != FINGERPRINT_NOFINGER)
@@ -124,6 +176,7 @@ void loop()
                 atmegaSerial.listen();
 
                 atmegaSerial.write(FP_PASS);
+                isOpen = true;
             }
         }
     }

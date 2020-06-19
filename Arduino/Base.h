@@ -6,6 +6,7 @@
 #define KEYPAD_ROWS 4
 #define KEYPAD_COLS 4
 #define PW_MAX 10
+#define BUZZER_PIN 4
 
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -32,6 +33,7 @@ extern Keypad dKeypad;
 extern Adafruit_SSD1306 display;
 extern SoftwareSerial fingerSerial;
 extern SoftwareSerial atmegaSerial;
+extern SoftwareSerial btSerial;
 extern Adafruit_Fingerprint fingerSensor;
 
 
@@ -54,5 +56,10 @@ boolean CheckFP();
 boolean VerifyFP();
 void WaitRemoveFinger();
 boolean EnrollFP(uint8_t id);
+
+void BuzzerOpen();
+void BuzzerCheckClose();
+void BuzzerClose();
+void BuzzerLoop(float tDelay);
 
 #endif
