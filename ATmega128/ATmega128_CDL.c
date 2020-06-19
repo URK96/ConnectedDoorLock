@@ -32,10 +32,7 @@ OS_STK TaskStartStk[TASK_STK_SIZE];
 
 OS_FLAG_GRP *osFlag;
 
-INT8U pw[10] = { 0 };
-INT8U pwCount = 0;
-
-int sendCode = -1;
+//int sendCode = -1;
 
 /*
 **************************************************************************************************************
@@ -107,11 +104,13 @@ void StartTask(void *data)
 
     PORTA = 0x01;
 
+    // Suspend all sub task
     OSTaskSuspend(2);
     OSTaskSuspend(3);
     OSTaskSuspend(4);
     OSTaskSuspend(5);
 
+    // Checking process with arduino uno by serial
     while (1)
     {
         code = USART0Receive();
@@ -126,8 +125,10 @@ void StartTask(void *data)
 
     USART0Transmit(SERIAL_WAIT);
 
+    // Init servo motor - close
     SetServoAngle(120);
 
+    // Start sub task except DDS task
     OSTaskResume(2);
     OSTaskResume(3);
     OSTaskResume(4);
@@ -152,7 +153,7 @@ void CommandTask(void *data)
 
     while (1)
     {
-        PORTA |= 0x02;
+        //PORTA |= 0x02;
 
         code = USART0Receive();
 
@@ -176,25 +177,32 @@ void DoorTask(void *data)
 
     while (1)
     {
+        // Check door open by event flag 0x01
         OSFlagPend(osFlag, 0x01, OS_FLAG_WAIT_SET_ALL, 0, &err);
 
+        // If door is open, receiving command task suspend
         OSTaskSuspend(2);       
 
-        PORTA = 0x03;
+        //PORTA = 0x03;
 
         USART0Transmit(DOOR_OPEN);
         SetServoAngle(10);
         OSTimeDlyHMSM(0, 0, 0, 500);
+        // DDS task resume - Checking door close
         OSTaskResume(5);
 
+        // Checking door close process
+        // If door is close, wait 1 sec
+        // If door is close during 1 sec, lock is enable
         while (1)
         {
-            PORTA = 0x03;
+            //PORTA = 0x03;
 
+            // Check door close by event flag 0x02
             OSFlagPend(osFlag, 0x02, OS_FLAG_WAIT_SET_ALL, 0, &err);
             USART0Transmit(DOOR_CHECKCLOSE);
 
-            PORTA = 0x04;
+            //PORTA = 0x04;
 
             OSTimeDlyHMSM(0, 0, 1, 0);
 
@@ -210,6 +218,8 @@ void DoorTask(void *data)
 
         OSTimeDlyHMSM(0, 0, 0, 500);
 
+        // Resume receiving command task
+        // Suspend DDS task
         OSTaskResume(2);
         OSTaskSuspend(5);
 
@@ -221,6 +231,8 @@ void DDSTask(void *data)
 {
     INT8U err;
 
+    // If sensor is detect door, set event flag 0x01
+    // Else, clear event flag 0x01
     while (1)
     {
         if ((PINF & 0x01) == 0x01)
@@ -240,11 +252,14 @@ void CDSTask(void *data)
 {
     INT8 count;
 
+    // If sensor is detect anything, set event flag 0x02 and wait 1 sec
+    // If sensor is detect anything during 1 sec, temporary suspend receiving command task and send record signal
+    // Else, clear event flag 0x01
     while (1)
     {
         if ((PINF & 0x02) != 0x02)
         {
-            PORTA |= 0x80;
+            //PORTA |= 0x80;
 
             for (count = 0; count <= 2; ++count)
             {
@@ -256,7 +271,7 @@ void CDSTask(void *data)
                 OSTimeDlyHMSM(0, 0, 1, 0);
             }
 
-            PORTA |= 0x40;
+            //PORTA |= 0x40;
 
             OSTaskSuspend(2);
 
@@ -267,11 +282,11 @@ void CDSTask(void *data)
 
             OSTaskResume(2);
 
-            PORTA &= ~0x40;
+            //PORTA &= ~0x40;
         }
         else
         {
-            PORTA &= ~0x80;
+            //PORTA &= ~0x80;
         }
         
 
@@ -293,54 +308,6 @@ void SetServoAngle(INT8 angle)
     OCR1AH = (i >> 8);
     OCR1AL = (i & 0xFF);
 }
-
-/*void BuzzerOpen()
-{
-    int k;
-
-    BuzzerLoop(1.1);
-    BuzzerLoop(0.9);
-    BuzzerLoop(0.7);
-
-	_delay_ms(500);
-}
-
-void BuzzerCheckClose()
-{
-    int k;
-
-    BuzzerLoop(0.7);
-    BuzzerLoop(0.7);
-
-	_delay_ms(500);
-}
-
-void BuzzerClose()
-{
-	int k;
-
-    BuzzerLoop(0.7);
-    BuzzerLoop(0.9);
-    BuzzerLoop(1.1);
-
-	_delay_ms(500);
-}
-
-void BuzzerLoop(float delay)
-{
-    INT8U k;
-
-    for (k = 0; k < 120; ++k)
-	{
-		PORTD = 0x01;
-
-		_delay_ms(delay);
-		
-        PORTD = 0x00;
-		
-        _delay_ms(delay);
-	}
-}*/
 
 /*
 **************************************************************************************************************

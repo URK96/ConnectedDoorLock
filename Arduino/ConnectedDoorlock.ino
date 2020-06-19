@@ -12,7 +12,7 @@ void setup()
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, LOW);
   
-    Serial.begin(9600); // With RPi Serial Way
+    Serial.begin(9600); // Arduino -- RPi serial way
     atmegaSerial.begin(9600);
     btSerial.begin(9600);
 
@@ -28,7 +28,8 @@ void loop()
     atmegaSerial.listen();
 
     delay(50);
-
+    
+    // Receive ATmega128 signal
     if (atmegaSerial.available())
     {
         int code = atmegaSerial.read();
@@ -65,6 +66,7 @@ void loop()
 
         delay(500);
     }
+    // Receive RPi 4 signal
     else if (Serial.available())
     {
         int code = Serial.read();
@@ -87,6 +89,7 @@ void loop()
 
         char key = dKeypad.getKey();
         
+        // Process 16x16 keypad signal
         if (key != NO_KEY)
         {
             if ((pwCount < 10) && (key >= '0') && (key <= '9'))
@@ -142,6 +145,7 @@ void loop()
 
         delay(50);
 
+        // Receive bluetooth signal
         if (btSerial.available())
         {
             ResetTempPW();
@@ -169,6 +173,7 @@ void loop()
 
         fingerSerial.listen();
         
+        // Receive fingerprint sensor signal
         if (fingerSensor.getImage() != FINGERPRINT_NOFINGER)
         {
             if (CheckFP())

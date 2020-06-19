@@ -25,6 +25,7 @@ byte rfidCardUID[] = { 0x69, 0xDF, 0x0C, 0xB4 };
 
 MFRC522 mfrc;
 
+// RFID scan thread
 PI_THREAD(RFIDScan)
 {
     bool isPass = false;
@@ -69,6 +70,7 @@ PI_THREAD(RFIDScan)
     }
 }
 
+// Create screenshot command and run
 void RunScreenShotCmd()
 {
     time_t t;
@@ -95,6 +97,7 @@ void RunScreenShotCmd()
     system(cmd);
 }
 
+// Create record command and run
 void RunRecordCmd()
 {
     time_t t;
@@ -121,6 +124,7 @@ void RunRecordCmd()
     system(cmd);
 }
 
+// Run command with signal code
 void RunCommand()
 {
     char *cmd;
@@ -155,6 +159,7 @@ void RunCommand()
 
 int main()
 {
+    // Init wiringPi library
     if (wiringPiSetup() == -1)
     {
         fprintf(stderr, "Unable to start wiringPi!\n");
@@ -162,6 +167,7 @@ int main()
         exit(1);
     }
 
+    // Init serial with Arduino
     if ((fd = serialOpen("/dev/ttyUSB0", 9600)) < 0)
     {
         fprintf(stderr, "Cannot serial open!\n");
@@ -169,6 +175,7 @@ int main()
         exit(1);
     }
     
+    // Init RFID module
     mfrc.PCD_Init();
     
     if (piThreadCreate(RFIDScan) != 0)
@@ -178,6 +185,7 @@ int main()
 
     while (1)
     {
+        // Receive Arduino signal 
         if (serialDataAvail(fd) > 0)
         {
             data = serialGetchar(fd);
